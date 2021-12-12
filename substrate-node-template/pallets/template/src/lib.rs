@@ -19,9 +19,9 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-/// Simplified CommitReasons for commit Info.
+/// Simplified SituationReasons for situation Info.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-pub enum CommitReasons {
+pub enum SituationReasons {
 	Unknown = 0,
 	Earthquake, //地震
 	Mudslide,   //泥石流
@@ -31,41 +31,41 @@ pub enum CommitReasons {
 	Explosion,  //爆炸
 }
 
-impl Default for CommitReasons {
+impl Default for SituationReasons {
 	fn default() -> Self {
-		CommitReasons::Unknown
+		SituationReasons::Unknown
 	}
 }
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-pub enum CommitStatus {
+pub enum SituationStatus {
 	Unknown = 0,
 	Open,
 	Close,
 }
-impl Default for CommitStatus {
+impl Default for SituationStatus {
 	fn default() -> Self {
-		CommitStatus::Unknown
+		SituationStatus::Unknown
 	}
 }
 
-/// Simplified CommitReasons for withdrawing balance.
+/// Simplified SituationReasons for withdrawing balance.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, Default)]
-pub struct CommitInfo<AccountId> {
+pub struct SituationInfo<AccountId> {
 	position_x: u32,
 	position_y: u32,
-	reason: CommitReasons,
+	reason: SituationReasons,
 	timestamp: u64,
 	meetint_link: Vec<u8>,
 	up_votes: u64,
 	down_votes: u64,
 	uploader: AccountId,
-	status: CommitStatus,
+	status: SituationStatus,
 }
 
 #[frame_support::pallet]
 pub mod pallet {
-	use crate::{CommitInfo, CommitReasons, CommitStatus, Vec};
+	use crate::{SituationInfo, SituationReasons, SituationStatus, Vec};
 	use frame_support::traits::{Currency, ExistenceRequirement::KeepAlive};
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
@@ -88,23 +88,23 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
-	/// Next id of an commit
+	/// Next id of an situation
 	#[pallet::storage]
-	#[pallet::getter(fn next_commit_id)]
-	pub(super) type NextCommitId<T: Config> = StorageValue<_, u64>;
+	#[pallet::getter(fn next_situation_id)]
+	pub(super) type NextSituationId<T: Config> = StorageValue<_, u64>;
 
-	/// Details of an commit.
+	/// Details of an situation.
 	#[pallet::storage]
-	#[pallet::getter(fn commits)]
-	pub(super) type Commits<T: Config> =
-		StorageMap<_, Blake2_128Concat, u64, CommitInfo<T::AccountId>, ValueQuery>;
+	#[pallet::getter(fn situations)]
+	pub(super) type Situations<T: Config> =
+		StorageMap<_, Blake2_128Concat, u64, SituationInfo<T::AccountId>, ValueQuery>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		CommitCreated(u64, u32, u32, CommitReasons, u64, Vec<u8>, T::AccountId),
+		SituationCreated(u64, u32, u32, SituationReasons, u64, Vec<u8>, T::AccountId),
 		UpVote(u64, T::AccountId),
 		DownVote(u64, T::AccountId),
 		Close(u64, T::AccountId),
@@ -113,7 +113,7 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		InvalidCommitId,
+		InvalidSituationId,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -122,31 +122,31 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(0)]
-		pub fn staking(origin: OriginFor<T>, commit_id: u64) -> DispatchResult {
+		pub fn staking(origin: OriginFor<T>, situation_id: u64) -> DispatchResult {
 			Ok(())
 		}
 
 		#[pallet::weight(0)]
-		pub fn un_staking(origin: OriginFor<T>, commit_id: u64) -> DispatchResult {
+		pub fn un_staking(origin: OriginFor<T>, situation_id: u64) -> DispatchResult {
 			Ok(())
 		}
 
 		#[pallet::weight(0)]
-		pub fn commit(
+		pub fn upload(
 			origin: OriginFor<T>,
 			position_x: u32,
 			position_y: u32,
-			reason: CommitReasons,
+			reason: SituationReasons,
 			timestamp: u64,
 			meetint_link: Vec<u8>,
 		) -> DispatchResult {
 			let uploader = ensure_signed(origin)?;
-			let commit_id = NextCommitId::<T>::get().unwrap_or_default();
+			let situation_id = NextSituationId::<T>::get().unwrap_or_default();
 
 			let zero_vote: u64 = 0;
-			Commits::<T>::insert(
-				commit_id,
-				CommitInfo {
+			Situations::<T>::insert(
+				situation_id,
+				SituationInfo {
 					position_x,
 					position_y,
 					reason,
@@ -155,13 +155,13 @@ pub mod pallet {
 					up_votes: zero_vote,
 					down_votes: zero_vote,
 					uploader: uploader.clone(),
-					status: CommitStatus::Open,
+					status: SituationStatus::Open,
 				},
 			);
-			NextCommitId::<T>::put(commit_id.saturating_add(One::one()));
+			NextSituationId::<T>::put(situation_id.saturating_add(One::one()));
 
-			Self::deposit_event(Event::CommitCreated(
-				commit_id,
+			Self::deposit_event(Event::SituationCreated(
+				situation_id,
 				position_x,
 				position_y,
 				reason,
@@ -174,41 +174,41 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		pub fn up_vote(origin: OriginFor<T>, commit_id: u64) -> DispatchResult {
+		pub fn up_vote(origin: OriginFor<T>, situation_id: u64) -> DispatchResult {
 			let voter = ensure_signed(origin)?;
-			Commits::<T>::try_mutate(commit_id, |commit| -> DispatchResult {
-				commit.up_votes += 1;
-				Self::deposit_event(Event::UpVote(commit_id, voter));
+			Situations::<T>::try_mutate(situation_id, |situation| -> DispatchResult {
+				situation.up_votes += 1;
+				Self::deposit_event(Event::UpVote(situation_id, voter));
 				Ok(())
 			})
-			.map_err(|_| <Error<T>>::InvalidCommitId)?;
+			.map_err(|_| <Error<T>>::InvalidSituationId)?;
 
 			Ok(())
 		}
 
 		#[pallet::weight(0)]
-		pub fn down_vote(origin: OriginFor<T>, commit_id: u64) -> DispatchResult {
+		pub fn down_vote(origin: OriginFor<T>, situation_id: u64) -> DispatchResult {
 			let voter = ensure_signed(origin)?;
-			Commits::<T>::try_mutate(commit_id, |commit| -> DispatchResult {
-				commit.down_votes += 1;
-				Self::deposit_event(Event::DownVote(commit_id, voter));
+			Situations::<T>::try_mutate(situation_id, |situation| -> DispatchResult {
+				situation.down_votes += 1;
+				Self::deposit_event(Event::DownVote(situation_id, voter));
 				Ok(())
 			})
-			.map_err(|_| <Error<T>>::InvalidCommitId)?;
+			.map_err(|_| <Error<T>>::InvalidSituationId)?;
 
 			Ok(())
 		}
 
 		#[pallet::weight(0)]
-		pub fn close(origin: OriginFor<T>, commit_id: u64) -> DispatchResult {
+		pub fn close(origin: OriginFor<T>, situation_id: u64) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 
-			Commits::<T>::try_mutate(commit_id, |commit| -> DispatchResult {
-				commit.status = CommitStatus::Close;
-				Self::deposit_event(Event::Close(commit_id, from));
+			Situations::<T>::try_mutate(situation_id, |situation| -> DispatchResult {
+				situation.status = SituationStatus::Close;
+				Self::deposit_event(Event::Close(situation_id, from));
 				Ok(())
 			})
-			.map_err(|_| <Error<T>>::InvalidCommitId)?;
+			.map_err(|_| <Error<T>>::InvalidSituationId)?;
 
 			Ok(())
 		}
