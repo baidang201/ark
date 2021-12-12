@@ -108,6 +108,7 @@ pub mod pallet {
 		UpVote(u64, T::AccountId),
 		DownVote(u64, T::AccountId),
 		Close(u64, T::AccountId),
+		Thank(u64, T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -225,6 +226,7 @@ pub mod pallet {
 
 			let situation = Situations::<T>::get(situation_id);
 			T::Currency::transfer(&from, &situation.submitter, balance, KeepAlive)?;
+			Self::deposit_event(Event::Thank(situation_id, from));
 
 			Ok(())
 		}
