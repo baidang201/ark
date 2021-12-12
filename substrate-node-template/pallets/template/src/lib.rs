@@ -59,7 +59,7 @@ pub struct SituationInfo<AccountId> {
 	meetint_link: Vec<u8>,
 	up_votes: u64,
 	down_votes: u64,
-	uploader: AccountId,
+	submitter: AccountId,
 	status: SituationStatus,
 }
 
@@ -132,7 +132,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		pub fn upload(
+		pub fn submit(
 			origin: OriginFor<T>,
 			position_x: u32,
 			position_y: u32,
@@ -140,7 +140,7 @@ pub mod pallet {
 			timestamp: u64,
 			meetint_link: Vec<u8>,
 		) -> DispatchResult {
-			let uploader = ensure_signed(origin)?;
+			let submitter = ensure_signed(origin)?;
 			let situation_id = NextSituationId::<T>::get().unwrap_or_default();
 
 			let zero_vote: u64 = 0;
@@ -154,7 +154,7 @@ pub mod pallet {
 					meetint_link: meetint_link.clone(),
 					up_votes: zero_vote,
 					down_votes: zero_vote,
-					uploader: uploader.clone(),
+					submitter: submitter.clone(),
 					status: SituationStatus::Open,
 				},
 			);
@@ -167,7 +167,7 @@ pub mod pallet {
 				reason,
 				timestamp,
 				meetint_link,
-				uploader,
+				submitter,
 			));
 
 			Ok(())
@@ -224,7 +224,7 @@ pub mod pallet {
 			ensure!(Situations::<T>::contains_key(situation_id), Error::<T>::InvalidSituationId);
 
 			let situation = Situations::<T>::get(situation_id);
-			T::Currency::transfer(&from, &situation.uploader, balance, KeepAlive)?;
+			T::Currency::transfer(&from, &situation.submitter, balance, KeepAlive)?;
 
 			Ok(())
 		}
