@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Grid, Button} from 'semantic-ui-react';
+import { Table, Grid, Button, Label} from 'semantic-ui-react';
 import { useSubstrate } from './substrate-lib';
 import { TxButton } from './substrate-lib/components';
 
@@ -38,17 +38,27 @@ export default function Main (props) {
   }
 
   const fetchSituationCnt = () => {
+    let unsubscribeAll = null;
+
     api.query.templateModule.nextSituationId(amount => {
       const situationCnt = amount.toJSON()
       console.log("situationCnt:", situationCnt);
       setSituationCnt(situationCnt)
-    })
+    }).then(unsub => {
+        unsubscribeAll = unsub;
+      }).catch(console.error);
+
+    return () => unsubscribeAll && unsubscribeAll();
   }
 
   useEffect(fetchSituationCnt, [api, keyring])
 
   useEffect(() => {
     let unsubscribeAll = null;
+
+    if (0 >= situationCnt) {
+      return
+    }
 
     api.query.templateModule.situations.multi([...Array(situationCnt).keys()], (data) => {
       const tempData = []
@@ -80,6 +90,10 @@ export default function Main (props) {
   return (
     <Grid.Column>
       <h1>Situations</h1>
+
+      <Label basic color='teal'>
+        {status}
+      </Label>
       <Table celled striped size='small'>
         <Table.Body>
           <Table.Row>
@@ -150,8 +164,32 @@ export default function Main (props) {
                   attrs={{
                     palletRpc: 'templateModule',
                     callable: 'thank',
-                    inputParams: [situation.index, 1],
+                    inputParams: [situation.index, 1000000000000],
                     paramFields: [true, true]
+                  }}
+                />
+                <TxButton
+                  accountPair={accountPair}
+                  label='UpVote'
+                  type='SIGNED-TX'
+                  setStatus={setStatus}
+                  attrs={{
+                    palletRpc: 'templateModule',
+                    callable: 'upVote',
+                    inputParams: [situation.index],
+                    paramFields: [true]
+                  }}
+                />
+                <TxButton
+                  accountPair={accountPair}
+                  label='DownVote'
+                  type='SIGNED-TX'
+                  setStatus={setStatus}
+                  attrs={{
+                    palletRpc: 'templateModule',
+                    callable: 'downVote',
+                    inputParams: [situation.index],
+                    paramFields: [true]
                   }}
                 />
               </Table.Cell>
