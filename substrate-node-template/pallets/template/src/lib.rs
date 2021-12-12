@@ -37,6 +37,18 @@ impl Default for CommitReasons {
 	}
 }
 
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+pub enum CommitStatus {
+	Unknown = 0,
+	Open,
+	Close,
+}
+impl Default for CommitStatus {
+	fn default() -> Self {
+		CommitStatus::Unknown
+	}
+}
+
 /// Simplified CommitReasons for withdrawing balance.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, Default)]
 pub struct CommitInfo<AccountId> {
@@ -48,11 +60,12 @@ pub struct CommitInfo<AccountId> {
 	up_votes: u64,
 	down_votes: u64,
 	uploader: AccountId,
+	status: CommitStatus,
 }
 
 #[frame_support::pallet]
 pub mod pallet {
-	use crate::{CommitInfo, CommitReasons, Vec};
+	use crate::{CommitInfo, CommitReasons, CommitStatus, Vec};
 	use frame_support::traits::{Currency, ExistenceRequirement::KeepAlive};
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
@@ -94,6 +107,7 @@ pub mod pallet {
 		CommitCreated(u64, u32, u32, CommitReasons, u64, Vec<u8>, T::AccountId),
 		UpVote(u64, T::AccountId),
 		DownVote(u64, T::AccountId),
+		Close(u64, T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -141,6 +155,7 @@ pub mod pallet {
 					up_votes: zero_vote,
 					down_votes: zero_vote,
 					uploader: uploader.clone(),
+					status: CommitStatus::Open,
 				},
 			);
 			NextCommitId::<T>::put(commit_id.saturating_add(One::one()));
@@ -177,6 +192,20 @@ pub mod pallet {
 			Commits::<T>::try_mutate(commit_id, |commit| -> DispatchResult {
 				commit.down_votes += 1;
 				Self::deposit_event(Event::DownVote(commit_id, voter));
+				Ok(())
+			})
+			.map_err(|_| <Error<T>>::InvalidCommitId)?;
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn close(origin: OriginFor<T>, commit_id: u64) -> DispatchResult {
+			let from = ensure_signed(origin)?;
+
+			Commits::<T>::try_mutate(commit_id, |commit| -> DispatchResult {
+				commit.status = CommitStatus::Close;
+				Self::deposit_event(Event::Close(commit_id, from));
 				Ok(())
 			})
 			.map_err(|_| <Error<T>>::InvalidCommitId)?;
