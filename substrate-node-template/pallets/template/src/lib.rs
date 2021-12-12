@@ -216,11 +216,15 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn thank(
 			origin: OriginFor<T>,
-			to: T::AccountId,
+			situation_id: u64,
 			balance: BalanceOf<T>,
 		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
-			T::Currency::transfer(&from, &to, balance, KeepAlive)?;
+
+			ensure!(Situations::<T>::contains_key(situation_id), Error::<T>::InvalidSituationId);
+
+			let situation = Situations::<T>::get(situation_id);
+			T::Currency::transfer(&from, &situation.uploader, balance, KeepAlive)?;
 
 			Ok(())
 		}
