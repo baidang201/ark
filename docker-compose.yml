@@ -1,0 +1,34 @@
+version: "3.5"
+networks:
+  arknetwork:
+    name: arknetwork
+
+services:
+  noahs-ark-node:
+    container_name: noahs-ark-node
+    image: baidang201/noahs-ark-node:latest
+    working_dir: /var/www/node-template
+    ports:
+      - "9944:9944"
+    environment:
+      - CARGO_HOME=/var/www/node-template/.cargo
+    command: /usr/local/bin/node-template --dev --rpc-cors all --rpc-methods=unsafe --rpc-external --unsafe-ws-external --unsafe-rpc-external
+    restart: always
+    networks:
+      arknetwork:
+        aliases: 
+          - arknetwork
+  noahs-ark-front:
+    image: baidang201/noahs-ark-front:latest
+    container_name: noahs-ark-front
+    ports:
+      - "8887:8887"
+    environment:
+      PORT: 8887
+    depends_on:
+      - noahs-ark-node
+    restart: always
+    networks:
+      arknetwork:
+        aliases: 
+          - arknetwork
